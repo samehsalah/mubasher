@@ -9,44 +9,35 @@ const FRESHCHAT_API_KEY = process.env.FRESHCHAT_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 app.post('/freshchat-webhook', async (req, res) => {
-    // 1. Log the incoming event for debugging
     console.log("Incoming Webhook Event:", req.body.action); 
-    
-    // Always reply OK immediately to Freshchat to prevent timeouts
-    res.status(200).send('OK');
 
     const body = req.body;
     let userMessage = "";
     let conversationId = "";
-    let actorType = "";
 
     try {
-        // 2. CHECK: Only process "message_create" events
-        // The log you sent showed "conversation_resolution" - we must IGNORE that or the bot crashes.
+        // 1. FILTER: Only process new user messages
         if (body.action !== 'message_create') {
-            console.log(`Ignoring event type: ${body.action}`);
-            return;
+            // If it's not a message (e.g., typing or close), just say OK and exit
+            return res.status(200).send('Ignored event');
         }
 
-        // 3. CHECK: Only process messages from "user" (not bot)
-        actorType = body.actor.actor_type;
-        if (actorType !== 'user') {
-            console.log(`Ignoring message from actor: ${actorType}`);
-            return; 
+        if (body.actor.actor_type !== 'user') {
+            return res.status(200).send('Ignored bot message');
         }
 
-        // 4. Extract Data
+        // 2. EXTRACT DATA
         if (body.data && body.data.message && body.data.message.message_parts) {
             userMessage = body.data.message.message_parts[0].text.content;
             conversationId = body.data.message.conversation_id;
         } else {
-            console.log("Message content not found in payload.");
-            return;
+            return res.status(200).send('No message content');
         }
 
         console.log(`Processing User Message: "${userMessage}"`);
 
-        // 5. SEND TO GOOGLE GEMINI (Updated Model: gemini-1.5-flash)
+        // 3. CALL GEMINI (We wait here!)
+        // Note: We use gemini-1.5-flash because it is fast enough for webhooks
         const geminiResponse = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
@@ -57,7 +48,7 @@ app.post('/freshchat-webhook', async (req, res) => {
         const aiText = geminiResponse.data.candidates[0].content.parts[0].text;
         console.log(`Gemini Reply: "${aiText}"`);
 
-        // 6. SEND REPLY BACK TO FRESHCHAT
+        // 4. REPLY TO FRESHCHAT
         await axios.post(
             `${FRESHCHAT_API_URL}/conversations/${conversationId}/messages`,
             {
@@ -73,15 +64,19 @@ app.post('/freshchat-webhook', async (req, res) => {
                 }
             }
         );
-        console.log("Successfully sent reply to Freshchat.");
+
+        console.log("Successfully replied.");
+        
+        // 5. FINISH (Only now do we tell Vercel we are done)
+        res.status(200).send('Success');
 
     } catch (error) {
-        console.error("Error Processing Request:");
+        console.error("Error Processing Request:", error.message);
         if (error.response) {
             console.error("API Error Data:", JSON.stringify(error.response.data));
-        } else {
-            console.error("Error Message:", error.message);
         }
+        // Even if we fail, we must send a response to stop Freshchat from retrying
+        res.status(200).send('Error processed');
     }
 });
 
