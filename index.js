@@ -64,3 +64,16 @@ app.post('/freshchat-webhook', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+// ... existing code ...
+
+const PORT = process.env.PORT || 3000;
+
+// Only run app.listen if we are NOT in Vercel (local development)
+if (require.main === module) {
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}
+
+// Export the app for Vercel
+module.exports = app;
