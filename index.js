@@ -53,7 +53,7 @@ app.post('/freshchat-webhook', async (req, res) => {
             `${FRESHCHAT_API_URL}/conversations/${conversationId}/messages`,
             {
                 actor_type: "agent",
-                actor_id: "bot", 
+                actor_id: "f874ff7e-3f2c-40da-90aa-0fc2686cbb3b", // UPDATED: Your specific Agent ID
                 message_type: "normal",
                 message_parts: [{ text: { content: aiText } }]
             },
