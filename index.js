@@ -39,7 +39,7 @@ app.post('/freshchat-webhook', async (req, res) => {
         // 3. CALL GEMINI (We wait here!)
         // Note: We use gemini-1.5-flash because it is fast enough for webhooks
         const geminiResponse = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
                 contents: [{ parts: [{ text: userMessage }] }]
             }
